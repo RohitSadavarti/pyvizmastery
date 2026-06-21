@@ -1,0 +1,1807 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Python Data Visualization Mastery Platform</title>
+<!-- Monaco Editor -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.js"></script>
+<!-- Plotly.js for interactive chart rendering -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.27.0/plotly.min.js"></script>
+<!-- Pyodide -->
+<script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
+<style>
+:root {
+  --font-display: 'Space Grotesk', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, Monaco, monospace;
+
+  --accent-amber: #F5A623;
+  --accent-amber-dim: #B97D1A;
+  --accent-teal: #2DD4BF;
+  --accent-red: #F87171;
+  --accent-green: #4ADE80;
+  --accent-purple: #C084FC;
+  --accent-blue: #60A5FA;
+  --radius: 8px;
+}
+
+html[data-theme="dark"] {
+  --bg-base: #0B0E14;
+  --bg-panel: #11151C;
+  --bg-elevated: #171C26;
+  --bg-input: #0E1118;
+  --border: #242B38;
+  --border-soft: #1C212C;
+  --text-primary: #E7EAF0;
+  --text-secondary: #8B93A7;
+  --text-dim: #5A6276;
+  --grid-dot: #1E2532;
+  --shadow: 0 8px 24px rgba(0,0,0,0.45);
+}
+
+html[data-theme="light"] {
+  --bg-base: #EEF1F6;
+  --bg-panel: #FFFFFF;
+  --bg-elevated: #F6F8FB;
+  --bg-input: #FFFFFF;
+  --border: #DBE1EA;
+  --border-soft: #E6EAF1;
+  --text-primary: #1B2230;
+  --text-secondary: #5B6478;
+  --text-dim: #97A0B3;
+  --grid-dot: #D7DEE9;
+  --shadow: 0 8px 24px rgba(30,40,60,0.10);
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+::selection { background: var(--accent-amber); color: #1B1404; }
+button { font-family: inherit; cursor: pointer; }
+textarea, input, select { font-family: inherit; }
+
+/* ---------------- HEADER ---------------- */
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 18px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  z-index: 50;
+}
+.brand { display: flex; align-items: baseline; gap: 8px; flex-shrink: 0; }
+.brand-mark { font-family: var(--font-display); font-weight: 700; font-size: 19px; letter-spacing: -0.02em; color: var(--text-primary); }
+.brand-mark span { color: var(--accent-amber); }
+.brand-sub { font-size: 11px; color: var(--text-dim); font-family: var(--font-mono); display: none; }
+@media (min-width: 900px) { .brand-sub { display: inline; } }
+
+.header-progress { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 120px; max-width: 280px; }
+.progress-track { flex: 1; height: 6px; background: var(--border); border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--accent-teal), var(--accent-amber)); width: 0%; transition: width .4s ease; }
+.progress-label, .accuracy-label { font-size: 11px; color: var(--text-secondary); font-family: var(--font-mono); white-space: nowrap; }
+
+.header-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
+.icon-btn {
+  background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 7px 11px; font-size: 12.5px; display: flex; align-items: center; gap: 6px;
+  transition: border-color .15s, transform .1s;
+}
+.icon-btn:hover { border-color: var(--accent-amber); }
+.icon-btn:active { transform: scale(0.97); }
+
+/* ---------------- LAYOUT ---------------- */
+.main-layout { flex: 1; display: flex; min-height: 0; }
+.panel { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+#left-panel { width: 38%; border-right: 1px solid var(--border); background: var(--bg-panel); }
+#center-panel { width: 38%; border-right: 1px solid var(--border); background: var(--bg-base); }
+#right-panel { width: 24%; background: var(--bg-panel); }
+#center-panel.fullscreen { position: fixed; inset: 56px 0 0 0; width: 100%; z-index: 100; border: none; }
+#center-panel.fullscreen ~ #right-panel, .main-layout:has(#center-panel.fullscreen) #left-panel { display: none; }
+
+.panel-scroll { overflow-y: auto; padding: 18px 20px 40px; flex: 1; }
+
+/* ---------------- LEFT PANEL ---------------- */
+.q-meta-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+.q-section-label { font-size: 11px; color: var(--text-dim); font-family: var(--font-mono); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+.q-id-chip { font-family: var(--font-mono); font-weight: 700; color: var(--accent-amber); font-size: 13px; }
+
+.badge { font-size: 10.5px; font-family: var(--font-mono); padding: 3px 9px; border-radius: 100px; text-transform: uppercase; letter-spacing: .03em; border: 1px solid transparent; }
+.diff-beginner { background: rgba(45,212,191,.12); color: var(--accent-teal); border-color: rgba(45,212,191,.3); }
+.diff-intermediate { background: rgba(245,166,35,.12); color: var(--accent-amber); border-color: rgba(245,166,35,.3); }
+.diff-advanced { background: rgba(248,113,113,.12); color: var(--accent-red); border-color: rgba(248,113,113,.3); }
+.lib-matplotlib { background: rgba(96,165,250,.12); color: var(--accent-blue); border-color: rgba(96,165,250,.3); }
+.lib-seaborn { background: rgba(192,132,252,.12); color: var(--accent-purple); border-color: rgba(192,132,252,.3); }
+.lib-plotly { background: rgba(45,212,191,.12); color: var(--accent-teal); border-color: rgba(45,212,191,.3); }
+.solved-chip { display: none; align-items: center; gap: 5px; font-size: 11px; color: var(--accent-green); font-family: var(--font-mono); }
+
+#q-title { font-family: var(--font-display); font-size: 22px; font-weight: 700; margin: 4px 0 10px; letter-spacing: -0.01em; }
+#q-desc { font-size: 14px; line-height: 1.6; color: var(--text-primary); margin-bottom: 14px; }
+
+.field-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-dim); font-family: var(--font-mono); margin: 16px 0 6px; }
+.field-value { font-size: 13.5px; color: var(--text-secondary); line-height: 1.5; }
+
+table#dataset-table { width: 100%; border-collapse: collapse; font-size: 12.5px; font-family: var(--font-mono); margin-top: 4px; }
+#dataset-table th { text-align: left; color: var(--accent-amber); border-bottom: 1px solid var(--border); padding: 5px 8px; background: var(--bg-elevated); }
+#dataset-table td { padding: 5px 8px; border-bottom: 1px solid var(--border-soft); color: var(--text-secondary); }
+#dataset-note { font-size: 11px; color: var(--text-dim); margin-top: 6px; }
+
+#hints-list { list-style: none; padding: 0; margin: 4px 0 0; display: flex; flex-direction: column; gap: 6px; }
+.hint-item { font-size: 12.5px; padding: 8px 10px; background: var(--bg-elevated); border: 1px dashed var(--border); border-radius: var(--radius); cursor: pointer; color: var(--text-secondary); }
+.hint-item:hover { border-color: var(--accent-amber); }
+.hint-locked { color: var(--text-dim); }
+
+#notes-area { width: 100%; min-height: 60px; background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text-primary); padding: 8px; font-size: 12.5px; resize: vertical; margin-top: 4px; }
+
+.left-actions { display: flex; gap: 8px; margin: 16px 0 4px; flex-wrap: wrap; }
+.btn { border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-elevated); color: var(--text-primary); padding: 8px 14px; font-size: 12.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; transition: all .15s; }
+.btn:hover:not(:disabled) { border-color: var(--accent-amber); }
+.btn:disabled { opacity: .4; cursor: not-allowed; }
+.btn-primary { background: var(--accent-amber); border-color: var(--accent-amber); color: #1B1404; }
+.btn-primary:hover:not(:disabled) { background: #FFB94A; }
+.btn-ghost.active { color: var(--accent-amber); border-color: var(--accent-amber); }
+.next-btn-row { position: sticky; bottom: 0; background: linear-gradient(transparent, var(--bg-panel) 30%); padding-top: 16px; margin-top: 8px; }
+#next-btn { width: 100%; justify-content: center; padding: 11px; font-size: 13.5px; }
+
+/* ---------------- CENTER PANEL (EDITOR) ---------------- */
+.editor-toolbar { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--bg-panel); flex-shrink: 0; flex-wrap: wrap; }
+.toolbar-spacer { flex: 1; }
+.kbd-hint { font-size: 11px; color: var(--text-dim); font-family: var(--font-mono); }
+#editor-wrap { flex: 1; position: relative; min-height: 0; }
+#editor { width: 100%; height: 100%; }
+#editor-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-dim); font-family: var(--font-mono); font-size: 13px; background: var(--bg-base); }
+.runner-status { font-size: 11.5px; padding: 8px 14px; font-family: var(--font-mono); border-top: 1px solid var(--border); background: var(--bg-panel); }
+.status-idle { color: var(--text-dim); }
+.status-loading { color: var(--accent-amber); }
+.status-success { color: var(--accent-green); }
+.status-error { color: var(--accent-red); }
+
+/* ---------------- RIGHT PANEL (OUTPUT) — graph-paper "instrument" signature ---------------- */
+.output-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.output-title { font-family: var(--font-mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-dim); }
+.status-pill { font-size: 11px; font-family: var(--font-mono); padding: 4px 10px; border-radius: 100px; display: flex; align-items: center; gap: 6px; }
+.status-pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 6px currentColor; }
+.status-idle.status-pill { color: var(--text-dim); background: rgba(139,147,167,.08); }
+.status-running.status-pill { color: var(--accent-amber); background: rgba(245,166,35,.1); }
+.status-pass.status-pill { color: var(--accent-green); background: rgba(74,222,128,.1); }
+.status-fail.status-pill { color: var(--accent-red); background: rgba(248,113,113,.1); }
+
+.chart-area {
+  flex: 0 0 auto;
+  min-height: 220px;
+  max-height: 46vh;
+  margin: 14px 16px 0;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background-color: var(--bg-elevated);
+  background-image: radial-gradient(var(--grid-dot) 1px, transparent 1px);
+  background-size: 14px 14px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.chart-area::before, .chart-area::after {
+  content: ''; position: absolute; width: 14px; height: 14px; border-color: var(--accent-amber); opacity: .55;
+}
+.chart-area::before { top: 6px; left: 6px; border-top: 2px solid; border-left: 2px solid; }
+.chart-area::after { bottom: 6px; right: 6px; border-bottom: 2px solid; border-right: 2px solid; }
+.chart-image { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 4px; }
+.output-placeholder { color: var(--text-dim); font-size: 12.5px; font-family: var(--font-mono); text-align: center; padding: 20px; }
+.error-placeholder { color: var(--accent-red); }
+#plotly-target { width: 100%; height: 100%; }
+
+.result-banner { margin: 12px 16px 0; padding: 9px 12px; border-radius: var(--radius); font-size: 13px; font-weight: 700; text-align: center; display: none; }
+.result-banner.pass { background: rgba(74,222,128,.12); color: var(--accent-green); border: 1px solid rgba(74,222,128,.35); }
+.result-banner.fail { background: rgba(248,113,113,.12); color: var(--accent-red); border: 1px solid rgba(248,113,113,.35); }
+
+.checklist { margin: 14px 16px 0; }
+.checklist-title { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-dim); font-family: var(--font-mono); margin-bottom: 6px; }
+.check-item { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 5px 0; color: var(--text-secondary); }
+.check-item.pass .check-icon { color: var(--accent-green); }
+.check-item.fail .check-icon { color: var(--accent-red); }
+.check-icon { font-family: var(--font-mono); font-weight: 700; width: 14px; }
+
+.console-wrap { margin: 14px 16px 18px; flex: 1; min-height: 60px; }
+.console-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-dim); font-family: var(--font-mono); margin-bottom: 6px; }
+#console-area { font-family: var(--font-mono); font-size: 11.5px; white-space: pre-wrap; word-break: break-word; color: var(--text-secondary); background: var(--bg-input); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; min-height: 50px; max-height: 22vh; overflow-y: auto; }
+
+/* ---------------- TOASTS ---------------- */
+#toast-container { position: fixed; top: 64px; right: 18px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
+.achievement-toast {
+  background: var(--bg-elevated); border: 1px solid var(--accent-amber); border-radius: var(--radius);
+  padding: 12px 14px; display: flex; gap: 10px; align-items: center; box-shadow: var(--shadow);
+  transform: translateX(120%); opacity: 0; transition: all .35s ease; max-width: 280px;
+}
+.achievement-toast.show { transform: translateX(0); opacity: 1; }
+.ach-icon { font-size: 22px; }
+.ach-name { font-size: 12.5px; font-weight: 700; color: var(--accent-amber); }
+.ach-desc { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+
+/* ---------------- OVERLAYS (Browse / Achievements) ---------------- */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: none; align-items: flex-start; justify-content: center; z-index: 200; padding: 60px 16px; }
+.overlay.open { display: flex; }
+.overlay-panel { background: var(--bg-panel); border: 1px solid var(--border); border-radius: 12px; width: 100%; max-width: 560px; max-height: 78vh; display: flex; flex-direction: column; box-shadow: var(--shadow); }
+.overlay-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+.overlay-header h3 { margin: 0; font-family: var(--font-display); font-size: 16px; }
+.overlay-close { background: none; border: none; color: var(--text-secondary); font-size: 18px; }
+.overlay-controls { display: flex; gap: 8px; padding: 12px 18px; flex-wrap: wrap; border-bottom: 1px solid var(--border-soft); }
+.overlay-controls input[type="text"], .overlay-controls select { background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary); border-radius: var(--radius); padding: 7px 10px; font-size: 12.5px; }
+.overlay-controls input[type="text"] { flex: 1; min-width: 120px; }
+.checkbox-label { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-secondary); }
+.overlay-body { overflow-y: auto; padding: 8px 10px; }
+
+.q-list-item { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--radius); cursor: pointer; font-size: 12.5px; }
+.q-list-item:hover { background: var(--bg-elevated); }
+.q-list-item.active { background: rgba(245,166,35,.1); border: 1px solid rgba(245,166,35,.3); }
+.q-list-status { width: 16px; color: var(--text-dim); }
+.q-list-item.solved .q-list-status { color: var(--accent-green); }
+.q-list-id { font-family: var(--font-mono); color: var(--text-dim); width: 36px; flex-shrink: 0; }
+.q-list-title { flex: 1; color: var(--text-primary); }
+.q-list-lib { font-size: 9.5px; font-family: var(--font-mono); padding: 2px 7px; border-radius: 100px; text-transform: uppercase; }
+.q-list-bookmark { color: var(--accent-amber); }
+
+.ach-row { display: flex; align-items: center; gap: 12px; padding: 10px; border-radius: var(--radius); opacity: .5; }
+.ach-row.unlocked { opacity: 1; background: rgba(245,166,35,.06); }
+.ach-row-icon { font-size: 20px; }
+.ach-row-name { font-size: 13px; font-weight: 700; }
+.ach-row-desc { font-size: 11.5px; color: var(--text-secondary); }
+
+/* ---------------- RESPONSIVE ---------------- */
+@media (max-width: 980px) {
+  .main-layout { flex-direction: column; overflow-y: auto; }
+  #left-panel, #center-panel, #right-panel { width: 100%; border-right: none; border-bottom: 1px solid var(--border); }
+  #center-panel { height: 60vh; }
+  .panel-scroll { max-height: 50vh; }
+  .header-progress { max-width: 110px; }
+  .brand-sub { display: none; }
+}
+@media (max-width: 560px) {
+  .app-header { padding: 8px 10px; gap: 8px; }
+  .icon-btn span.label { display: none; }
+  .header-progress { display: none; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <header class="app-header">
+    <div class="brand">
+      <span class="brand-mark">PyViz Mastery</span>
+      <span class="brand-sub">Python Data Visualization Practice</span>
+    </div>
+    <div class="header-progress">
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      <span id="progress-label" class="kbd-hint">0 / 0 solved (0%)</span>
+      <span id="accuracy-label" class="kbd-hint">Accuracy: 0%</span>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="random-btn" title="Random Challenge">🎲 <span class="label">Random</span></button>
+      <button class="icon-btn" id="browse-btn" title="Browse Questions">📚 <span class="label">Browse</span></button>
+      <button class="icon-btn" id="achievements-btn" title="Achievements">🏆 <span class="label">Achievements</span></button>
+      <button class="icon-btn" id="theme-toggle" title="Toggle theme">☀️ Light</button>
+    </div>
+  </header>
+
+  <div class="main-layout">
+
+    <!-- LEFT PANEL -->
+    <section class="panel" id="left-panel">
+      <div class="panel-scroll">
+        <div class="q-meta-row">
+          <span id="q-section" class="q-section-label"></span>
+        </div>
+        <div class="q-meta-row">
+          <span id="q-number" class="q-id-chip"></span>
+          <span id="q-difficulty" class="badge"></span>
+          <span id="q-library" class="badge"></span>
+          <span id="solved-badge" class="solved-chip" style="display:inline-flex;">✓ Solved</span>
+          <span id="q-position" class="kbd-hint" style="margin-left:auto;"></span>
+        </div>
+
+        <h2 id="q-title"></h2>
+        <p id="q-desc"></p>
+
+        <div class="field-label">Learning Objective</div>
+        <div class="field-value" id="q-objective"></div>
+
+        <div class="field-label">Expected Chart Type</div>
+        <div class="field-value" id="q-expected-type"></div>
+
+        <div class="field-label">Dataset</div>
+        <table id="dataset-table"></table>
+        <div id="dataset-note"></div>
+
+        <div class="field-label">Hints</div>
+        <ul id="hints-list"></ul>
+
+        <div class="field-label">Your Notes</div>
+        <textarea id="notes-area" placeholder="Jot down notes for this question…"></textarea>
+
+        <div class="left-actions">
+          <button class="btn" id="bookmark-btn">☆ Bookmark</button>
+          <button class="btn" id="export-code-btn">⬇ Export Code</button>
+        </div>
+
+        <div class="next-btn-row">
+          <button class="btn btn-primary" id="next-btn" disabled>Next Question →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- CENTER PANEL -->
+    <section class="panel" id="center-panel">
+      <div class="editor-toolbar">
+        <button class="btn btn-primary" id="run-btn">▶ Run Code</button>
+        <button class="btn" id="reset-btn">↺ Reset</button>
+        <button class="btn" id="solution-btn">💡 Show Solution</button>
+        <button class="btn" id="fullscreen-btn">⛶ Fullscreen</button>
+        <span class="toolbar-spacer"></span>
+        <span class="kbd-hint">Ctrl+Enter to run</span>
+      </div>
+      <div id="editor-wrap">
+        <div id="editor"></div>
+        <div id="editor-loading">Loading editor…</div>
+      </div>
+      <div id="runner-status" class="runner-status status-idle">Booting…</div>
+    </section>
+
+    <!-- RIGHT PANEL -->
+    <section class="panel" id="right-panel">
+      <div class="output-header">
+        <span class="output-title">Output</span>
+        <span id="output-status" class="status-pill status-idle">Idle</span>
+      </div>
+      <div class="chart-area" id="chart-area">
+        <div class="output-placeholder">Run your code to see the chart here.</div>
+      </div>
+      <div class="result-banner" id="result-banner"></div>
+      <div class="checklist" id="checklist"></div>
+      <div class="console-wrap">
+        <div class="console-label">Console</div>
+        <div id="console-area"></div>
+      </div>
+    </section>
+
+  </div>
+</div>
+
+<!-- Browse Questions Overlay -->
+<div class="overlay" id="browse-overlay">
+  <div class="overlay-panel">
+    <div class="overlay-header">
+      <strong>Browse Questions</strong>
+      <button class="overlay-close" id="browse-close">✕</button>
+    </div>
+    <div class="overlay-controls">
+      <input type="text" id="search-input" placeholder="Search questions…" />
+      <select id="filter-library">
+        <option value="all">All Libraries</option>
+        <option value="matplotlib">Matplotlib</option>
+        <option value="seaborn">Seaborn</option>
+        <option value="plotly">Plotly</option>
+      </select>
+      <select id="filter-difficulty">
+        <option value="all">All Difficulties</option>
+        <option value="Beginner">Beginner</option>
+        <option value="Intermediate">Intermediate</option>
+        <option value="Advanced">Advanced</option>
+      </select>
+      <label class="checkbox-label"><input type="checkbox" id="filter-bookmarked" /> Bookmarked only</label>
+    </div>
+    <div class="overlay-body" id="question-list"></div>
+  </div>
+</div>
+
+<!-- Achievements Overlay -->
+<div class="overlay" id="achievements-overlay">
+  <div class="overlay-panel">
+    <div class="overlay-header">
+      <strong>Achievements</strong>
+      <button class="overlay-close" id="achievements-close">✕</button>
+    </div>
+    <div class="overlay-body" id="achievements-list"></div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+// ============================================================
+// QUESTION BANK
+// 24 hand-built questions spanning all 8 sections of the spec.
+// Each question is fully playable (dataset, starter code, solution,
+// hints, and a lightweight validation rule set).
+// ============================================================
+
+const QUESTIONS = [
+
+// ---------------- SECTION 1: MATPLOTLIB BASICS ----------------
+{
+  id: 1, section: 1, sectionTitle: "Matplotlib Basics", library: "matplotlib", difficulty: "Beginner",
+  title: "Line Chart",
+  description: "Plot a basic line chart showing monthly sales using Matplotlib. A line chart is the most fundamental way to show a trend over time.",
+  learningObjective: "Learn plt.plot(), and how to add a title and axis labels.",
+  expectedChartType: "Line Chart",
+  dataset: { columns: ["Month", "Sales"], rows: [["Jan",12000],["Feb",18000],["Mar",15000],["Apr",25000],["May",30000],["Jun",22000]] },
+  hints: [
+    "Use plt.plot(df['Month'], df['Sales']) to draw the line.",
+    "Add plt.title('Monthly Sales Trend'), plt.xlabel('Month') and plt.ylabel('Sales').",
+    "Don't call plt.show() — the platform captures the figure automatically."
+  ],
+  starterCode: `import matplotlib.pyplot as plt
+
+# df is already loaded for you with columns: Month, Sales
+
+# TODO: plot Month on the x-axis and Sales on the y-axis
+# TODO: add a title 'Monthly Sales Trend'
+# TODO: label the x-axis 'Month' and y-axis 'Sales'
+`,
+  solution: `import matplotlib.pyplot as plt
+
+plt.plot(df['Month'], df['Sales'])
+plt.title('Monthly Sales Trend')
+plt.xlabel('Month')
+plt.ylabel('Sales')
+`,
+  expectedOutput: { type: "line", title: "Monthly Sales Trend", xlabel: "Month", ylabel: "Sales", legend: false },
+  validationRules: ["type", "title", "xlabel", "ylabel"],
+  explanation: "plt.plot() is the workhorse of Matplotlib — pass it an x series and a y series and it connects the points with a line. Common mistake: forgetting axis labels, which is the #1 thing interviewers flag in a 'review this chart' exercise. Interview tip: always be ready to explain *why* you chose a line chart (it implies a continuous trend, e.g. time)."
+},
+{
+  id: 3, section: 1, sectionTitle: "Matplotlib Basics", library: "matplotlib", difficulty: "Beginner",
+  title: "Dashed Line",
+  description: "Re-draw the sales trend, but this time as a dashed line with a custom color — useful for distinguishing a forecast or secondary series from a primary one.",
+  learningObjective: "Use the linestyle and color parameters of plt.plot().",
+  expectedChartType: "Line Chart (dashed)",
+  dataset: { columns: ["Month", "Sales"], rows: [["Jan",12000],["Feb",18000],["Mar",15000],["Apr",25000],["May",30000],["Jun",22000]] },
+  hints: [
+    "plt.plot() accepts linestyle='--' for dashed lines.",
+    "Use color='orange' (or any named color / hex code).",
+    "Keep the same title/labels conventions as a normal line chart."
+  ],
+  starterCode: `import matplotlib.pyplot as plt
+
+# TODO: plot df['Month'] vs df['Sales'] as a DASHED orange line
+# TODO: title 'Sales Forecast (Dashed)'
+# TODO: label axes Month / Sales
+`,
+  solution: `import matplotlib.pyplot as plt
+
+plt.plot(df['Month'], df['Sales'], linestyle='--', color='orange')
+plt.title('Sales Forecast (Dashed)')
+plt.xlabel('Month')
+plt.ylabel('Sales')
+`,
+  expectedOutput: { type: "line", title: "Sales Forecast (Dashed)", xlabel: "Month", ylabel: "Sales", legend: false },
+  validationRules: ["type", "title", "xlabel", "ylabel"],
+  explanation: "linestyle accepts shorthand: '-' solid, '--' dashed, '-.' dash-dot, ':' dotted. Common mistake: passing 'dashed' instead of '--' (both actually work, but '--' is what most teams use by convention). Interview tip: dashed/dotted lines are the standard way analysts mark projections vs. actuals on a chart."
+},
+{
+  id: 9, section: 1, sectionTitle: "Matplotlib Basics", library: "matplotlib", difficulty: "Beginner",
+  title: "Legends",
+  description: "Plot two products' monthly sales on the same axes and add a legend so the viewer can tell the lines apart.",
+  learningObjective: "Plot multiple series and use plt.legend().",
+  expectedChartType: "Multi-line Chart with Legend",
+  dataset: { columns: ["Month", "ProductA", "ProductB"], rows: [["Jan",12000,9000],["Feb",18000,11000],["Mar",15000,14000],["Apr",25000,20000],["May",30000,26000],["Jun",22000,24000]] },
+  hints: [
+    "Call plt.plot() twice, once per product, each with a label='...' kwarg.",
+    "Call plt.legend() once after both plots to render it.",
+    "Give the chart a title like 'Product A vs Product B Sales'."
+  ],
+  starterCode: `import matplotlib.pyplot as plt
+
+# df has columns: Month, ProductA, ProductB
+# TODO: plot both products as separate lines with labels
+# TODO: call plt.legend()
+# TODO: add title and axis labels
+`,
+  solution: `import matplotlib.pyplot as plt
+
+plt.plot(df['Month'], df['ProductA'], label='Product A')
+plt.plot(df['Month'], df['ProductB'], label='Product B')
+plt.title('Product A vs Product B Sales')
+plt.xlabel('Month')
+plt.ylabel('Sales')
+plt.legend()
+`,
+  expectedOutput: { type: "line", title: "Product A vs Product B Sales", xlabel: "Month", ylabel: "Sales", legend: true },
+  validationRules: ["type", "title", "xlabel", "ylabel", "legend"],
+  explanation: "Each plt.plot() call with a label= becomes one legend entry; nothing shows up until you call plt.legend(). Common mistake: setting label= but forgetting the legend() call entirely. Interview tip: when asked to compare two series, always reach for a shared-axis line chart with a legend before reaching for two separate charts."
+},
+
+// ---------------- SECTION 2: MATPLOTLIB INTERMEDIATE ----------------
+{
+  id: 21, section: 2, sectionTitle: "Matplotlib Intermediate", library: "matplotlib", difficulty: "Intermediate",
+  title: "Bar Chart",
+  description: "Compare quarterly revenue across four regions using a vertical bar chart.",
+  learningObjective: "Use plt.bar() to compare categories.",
+  expectedChartType: "Bar Chart",
+  dataset: { columns: ["Region", "Revenue"], rows: [["North",54000],["South",38000],["East",61000],["West",47000]] },
+  hints: [
+    "plt.bar(df['Region'], df['Revenue']) draws vertical bars.",
+    "Title: 'Revenue by Region'.",
+    "Label the y-axis 'Revenue' and x-axis 'Region'."
+  ],
+  starterCode: `import matplotlib.pyplot as plt
+
+# TODO: bar chart of Revenue by Region
+`,
+  solution: `import matplotlib.pyplot as plt
+
+plt.bar(df['Region'], df['Revenue'], color='#4C72B0')
+plt.title('Revenue by Region')
+plt.xlabel('Region')
+plt.ylabel('Revenue')
+`,
+  expectedOutput: { type: "bar", title: "Revenue by Region", xlabel: "Region", ylabel: "Revenue", legend: false },
+  validationRules: ["type", "title", "xlabel", "ylabel"],
+  explanation: "Bar charts compare discrete categories; line charts imply continuity — using a line chart for categorical regions is a classic interview red flag. Common mistake: leaving bars in source order instead of sorting by value when ranking matters. Interview tip: be ready to explain when you'd sort bars (ranking questions) vs. keep a natural order (time, geography)."
+},
+{
+  id: 28, section: 2, sectionTitle: "Matplotlib Intermediate", library: "matplotlib", difficulty: "Intermediate",
+  title: "Scatter Plot",
+  description: "Explore the relationship between hours studied and exam score using a scatter plot.",
+  learningObjective: "Use plt.scatter() to visualize correlation between two numeric variables.",
+  expectedChartType: "Scatter Plot",
+  dataset: { columns: ["StudyHours", "ExamScore"], rows: [[1,42],[2,50],[3,58],[4,63],[5,70],[6,75],[7,81],[8,88],[9,90],[10,95]] },
+  hints: [
+    "plt.scatter(df['StudyHours'], df['ExamScore']).",
+    "Title: 'Study Hours vs Exam Score'.",
+    "This is the classic chart for showing correlation, not trend over time."
+  ],
+  starterCode: `import matplotlib.pyplot as plt
+
+# TODO: scatter plot of StudyHours vs ExamScore
+`,
+  solution: `import matplotlib.pyplot as plt
+
+plt.scatter(df['StudyHours'], df['ExamScore'], color='#DD8452')
+plt.title('Study Hours vs Exam Score')
+plt.xlabel('StudyHours')
+plt.ylabel('ExamScore')
+`,
+  expectedOutput: { type: "scatter", title: "Study Hours vs Exam Score", xlabel: "StudyHours", ylabel: "ExamScore", legend: false },
+  validationRules: ["type", "title", "xlabel", "ylabel"],
+  explanation: "Scatter plots are the go-to for 'is there a relationship between X and Y' questions. Common mistake: using a line chart instead, which falsely implies the x-axis is ordered/continuous in a meaningful sequence. Interview tip: mention correlation vs. causation — a scatter plot showing a relationship is not proof of cause and effect."
+},
+{
+  id: 30, section: 2, sectionTitle: "Matplotlib Intermediate", library: "matplotlib", difficulty: "Intermediate",
+  title: "Pie Chart",
+  description: "Show browser market share as a pie chart with percentage labels.",
+  learningObjective: "Use plt.pie() with autopct for percentage labels.",
+  expectedChartType: "Pie Chart",
+  dataset: { columns: ["Browser", "MarketShare"], rows: [["Chrome",65],["Safari",18],["Edge",8],["Firefox",6],["Other",3]] },
+  hints: [
+    "plt.pie(df['MarketShare'], labels=df['Browser'], autopct='%1.1f%%').",
+    "Title: 'Browser Market Share'.",
+    "Pie charts don't need x/y axis labels — skip plt.xlabel/ylabel here."
+  ],
+  starterCode: `import matplotlib.pyplot as plt
+
+# TODO: pie chart of MarketShare with Browser labels and percentage labels
+`,
+  solution: `import matplotlib.pyplot as plt
+
+plt.pie(df['MarketShare'], labels=df['Browser'], autopct='%1.1f%%')
+plt.title('Browser Market Share')
+`,
+  expectedOutput: { type: "pie", title: "Browser Market Share", xlabel: "", ylabel: "", legend: false },
+  validationRules: ["type", "title"],
+  explanation: "autopct='%1.1f%%' formats each wedge's percentage to one decimal place. Common mistake: using a pie chart for more than ~6 categories, which becomes unreadable — a bar chart is usually a better choice past that point. Interview tip: many data teams discourage pie charts entirely in favor of bar charts; know the argument for both sides."
+},
+
+// ---------------- SECTION 3: SEABORN BASICS ----------------
+{
+  id: 41, section: 3, sectionTitle: "Seaborn Basics", library: "seaborn", difficulty: "Beginner",
+  title: "Count Plot",
+  description: "Use Seaborn's countplot to show how many employees are in each department.",
+  learningObjective: "Use sns.countplot() to visualize frequency of categorical values.",
+  expectedChartType: "Count Plot",
+  dataset: { columns: ["Department"], rows: [["Sales"],["Sales"],["Sales"],["IT"],["IT"],["HR"],["HR"],["HR"],["HR"],["Ops"],["Ops"],["Ops"]] },
+  hints: [
+    "sns.countplot(x='Department', data=df).",
+    "Seaborn automatically counts occurrences for you — no manual aggregation needed.",
+    "Set a title with plt.title(...)."
+  ],
+  starterCode: `import seaborn as sns
+import matplotlib.pyplot as plt
+
+# TODO: countplot of Department
+`,
+  solution: `import seaborn as sns
+import matplotlib.pyplot as plt
+
+sns.countplot(x='Department', data=df)
+plt.title('Employee Count by Department')
+plt.xlabel('Department')
+plt.ylabel('Count')
+`,
+  expectedOutput: { type: "bar", title: "Employee Count by Department", xlabel: "Department", ylabel: "Count", legend: false },
+  validationRules: ["title"],
+  explanation: "countplot is the Seaborn shortcut for 'how many rows per category' — it replaces a manual .value_counts() + bar chart with one line. Common mistake: passing already-aggregated counts into countplot (it expects raw rows, not pre-counted totals — use barplot for that). Interview tip: mention this distinction; it's a frequent confusion point."
+},
+{
+  id: 44, section: 3, sectionTitle: "Seaborn Basics", library: "seaborn", difficulty: "Beginner",
+  title: "Scatter Plot (with hue)",
+  description: "Plot height vs weight, colored by gender, using Seaborn's scatterplot.",
+  learningObjective: "Use the hue parameter to encode a third, categorical dimension with color.",
+  expectedChartType: "Scatter Plot",
+  dataset: { columns: ["Height", "Weight", "Gender"], rows: [[160,55,"F"],[165,60,"F"],[170,68,"M"],[175,75,"M"],[168,62,"F"],[180,82,"M"],[155,50,"F"],[178,79,"M"]] },
+  hints: [
+    "sns.scatterplot(x='Height', y='Weight', hue='Gender', data=df).",
+    "hue automatically adds a legend for you.",
+    "Title: 'Height vs Weight by Gender'."
+  ],
+  starterCode: `import seaborn as sns
+import matplotlib.pyplot as plt
+
+# TODO: scatterplot of Height vs Weight, colored by Gender
+`,
+  solution: `import seaborn as sns
+import matplotlib.pyplot as plt
+
+sns.scatterplot(x='Height', y='Weight', hue='Gender', data=df)
+plt.title('Height vs Weight by Gender')
+`,
+  expectedOutput: { type: "scatter", title: "Height vs Weight by Gender", xlabel: "Height", ylabel: "Weight", legend: true },
+  validationRules: ["type", "title", "legend"],
+  explanation: "hue is Seaborn's signature feature over raw Matplotlib — it splits points (or bars, or lines) by a category and colors + legends them automatically. Common mistake: forgetting hue needs a categorical (not continuous) column to look clean — Seaborn will still run on a continuous hue but produce a colorbar-style gradient instead of a legend."
+},
+{
+  id: 48, section: 3, sectionTitle: "Seaborn Basics", library: "seaborn", difficulty: "Intermediate",
+  title: "Box Plot",
+  description: "Compare salary distributions across departments using a box plot — a great way to show spread and outliers at once.",
+  learningObjective: "Use sns.boxplot() to visualize distribution (median, quartiles, outliers) per category.",
+  expectedChartType: "Box Plot",
+  dataset: { columns: ["Department", "Salary"], rows: [["Sales",45000],["Sales",52000],["Sales",48000],["IT",65000],["IT",72000],["IT",61000],["HR",40000],["HR",43000],["HR",39000],["Ops",50000],["Ops",55000],["Ops",47000]] },
+  hints: [
+    "sns.boxplot(x='Department', y='Salary', data=df).",
+    "The box shows the IQR; the line inside is the median; dots beyond whiskers are outliers.",
+    "Title: 'Salary Distribution by Department'."
+  ],
+  starterCode: `import seaborn as sns
+import matplotlib.pyplot as plt
+
+# TODO: boxplot of Salary by Department
+`,
+  solution: `import seaborn as sns
+import matplotlib.pyplot as plt
+
+sns.boxplot(x='Department', y='Salary', data=df)
+plt.title('Salary Distribution by Department')
+plt.xlabel('Department')
+plt.ylabel('Salary')
+`,
+  expectedOutput: { type: "other", title: "Salary Distribution by Department", xlabel: "Department", ylabel: "Salary", legend: false },
+  validationRules: ["title", "xlabel", "ylabel"],
+  explanation: "A box plot answers 'what's the spread, and are there outliers' in one glance — much more information-dense than a bar of averages. Common mistake: using a box plot when you only have a handful of points per category (under ~5) — the quartiles become meaningless noise; a strip/swarm plot is better there. Interview tip: this is a favorite 'explain this chart' question — practice describing whiskers, IQR, and outlier dots out loud."
+},
+
+// ---------------- SECTION 4: SEABORN ADVANCED ----------------
+{
+  id: 56, section: 4, sectionTitle: "Seaborn Advanced", library: "seaborn", difficulty: "Advanced",
+  title: "Joint Plot",
+  description: "Use sns.jointplot() to show the Height vs Weight scatter together with each variable's individual distribution on the margins.",
+  learningObjective: "Combine a bivariate relationship with univariate marginal distributions in one figure.",
+  expectedChartType: "Joint Plot",
+  dataset: { columns: ["Height", "Weight"], rows: [[160,55],[165,60],[170,68],[175,75],[168,62],[180,82],[155,50],[178,79],[162,58],[172,70]] },
+  hints: [
+    "sns.jointplot(x='Height', y='Weight', data=df, kind='scatter').",
+    "jointplot returns a JointGrid (not a single Axes) — that's expected here.",
+    "Try kind='hex' or kind='kde' afterwards to see alternate marginal styles."
+  ],
+  starterCode: `import seaborn as sns
+import matplotlib.pyplot as plt
+
+# TODO: jointplot of Height vs Weight
+`,
+  solution: `import seaborn as sns
+import matplotlib.pyplot as plt
+
+sns.jointplot(x='Height', y='Weight', data=df, kind='scatter')
+`,
+  expectedOutput: { type: "other", title: "", xlabel: "Height", ylabel: "Weight", legend: false, minAxes: 3 },
+  validationRules: ["minAxes"],
+  explanation: "jointplot builds three axes behind the scenes: the main scatter plus two marginal histograms. Common mistake: trying to call plt.title() on it directly — because it's a JointGrid, you need fig.suptitle(...) or g.fig.suptitle(...) instead. Interview tip: this chart is a strong answer whenever someone asks for 'a quick way to see both the relationship and each variable's distribution'."
+},
+{
+  id: 59, section: 4, sectionTitle: "Seaborn Advanced", library: "seaborn", difficulty: "Advanced",
+  title: "Heatmap",
+  description: "Compute a correlation matrix of the numeric columns and visualize it as a heatmap with annotated values.",
+  learningObjective: "Use sns.heatmap() with annot=True to visualize a correlation matrix.",
+  expectedChartType: "Heatmap",
+  dataset: { columns: ["Age", "Income", "SpendScore"], rows: [[25,30000,60],[34,45000,55],[45,70000,40],[23,28000,75],[52,90000,30],[31,40000,65],[40,60000,50],[28,32000,70]] },
+  hints: [
+    "First compute corr_matrix = df.corr(numeric_only=True).",
+    "Then sns.heatmap(corr_matrix, annot=True, cmap='coolwarm').",
+    "Title: 'Correlation Heatmap'."
+  ],
+  starterCode: `import seaborn as sns
+import matplotlib.pyplot as plt
+
+# TODO: compute the correlation matrix of df, then heatmap it with annotations
+`,
+  solution: `import seaborn as sns
+import matplotlib.pyplot as plt
+
+corr_matrix = df.corr(numeric_only=True)
+sns.heatmap(corr_matrix, annot=True, cmap='coolwarm')
+plt.title('Correlation Heatmap')
+`,
+  expectedOutput: { type: "other", title: "Correlation Heatmap", xlabel: "", ylabel: "", legend: false },
+  validationRules: ["title"],
+  explanation: "Heatmaps are the standard way to scan many pairwise correlations at once — annot=True prints the numeric value inside each cell so you don't have to eyeball color alone. Common mistake: forgetting numeric_only=True (or excluding non-numeric columns manually) and getting an error from .corr() on mixed-type data. Interview tip: be ready to explain what a value near +1, -1, and 0 each mean."
+},
+{
+  id: 62, section: 4, sectionTitle: "Seaborn Advanced", library: "seaborn", difficulty: "Advanced",
+  title: "Regression Plot",
+  description: "Plot years of experience vs salary with a fitted regression line overlaid on the scatter points.",
+  learningObjective: "Use sns.regplot() to combine a scatter plot with a fitted linear trend line and confidence band.",
+  expectedChartType: "Regression Plot",
+  dataset: { columns: ["Experience", "Salary"], rows: [[1,32000],[2,38000],[3,45000],[4,50000],[5,58000],[6,63000],[7,70000],[8,76000],[9,83000],[10,90000]] },
+  hints: [
+    "sns.regplot(x='Experience', y='Salary', data=df).",
+    "The shaded band around the line is the confidence interval — pass ci=None to hide it.",
+    "Title: 'Experience vs Salary (with trend line)'."
+  ],
+  starterCode: `import seaborn as sns
+import matplotlib.pyplot as plt
+
+# TODO: regplot of Experience vs Salary
+`,
+  solution: `import seaborn as sns
+import matplotlib.pyplot as plt
+
+sns.regplot(x='Experience', y='Salary', data=df)
+plt.title('Experience vs Salary (with trend line)')
+plt.xlabel('Experience')
+plt.ylabel('Salary')
+`,
+  expectedOutput: { type: "scatter", title: "Experience vs Salary (with trend line)", xlabel: "Experience", ylabel: "Salary", legend: false },
+  validationRules: ["title", "xlabel", "ylabel"],
+  explanation: "regplot is scatterplot + a fitted line in one call — great for quickly eyeballing whether a linear relationship is plausible before running a formal regression. Common mistake: treating the fitted line as proof of a strong relationship without checking the spread of points around it. Interview tip: mention this is descriptive, not inferential — for a real conclusion you'd report R² or run statsmodels."
+},
+
+// ---------------- SECTION 5: PLOTLY BASICS ----------------
+{
+  id: 71, section: 5, sectionTitle: "Plotly Basics", library: "plotly", difficulty: "Beginner",
+  title: "Interactive Line Chart",
+  description: "Build an interactive line chart of monthly revenue using Plotly Express — hover over points to see exact values.",
+  learningObjective: "Use plotly.express.line() and store the result in a variable named fig.",
+  expectedChartType: "Interactive Line Chart",
+  dataset: { columns: ["Month", "Revenue"], rows: [["Jan",40000],["Feb",45000],["Mar",42000],["Apr",51000],["May",58000],["Jun",62000]] },
+  hints: [
+    "import plotly.express as px",
+    "fig = px.line(df, x='Month', y='Revenue', title='Monthly Revenue')",
+    "IMPORTANT: the platform looks for a variable literally named fig — don't rename it."
+  ],
+  starterCode: `import plotly.express as px
+
+# TODO: build an interactive line chart, store it in a variable called fig
+fig = None
+`,
+  solution: `import plotly.express as px
+
+fig = px.line(df, x='Month', y='Revenue', title='Monthly Revenue')
+`,
+  expectedOutput: { type: "scatter", title: "Monthly Revenue", xlabel: "Month", ylabel: "Revenue", legend: false },
+  validationRules: ["title"],
+  explanation: "Plotly Express (px) is the high-level Plotly API — one function call produces a fully interactive chart with hover tooltips, zoom, and pan built in. Common mistake: calling fig.show() — in this sandbox that's unnecessary, the platform renders whatever is stored in fig. Interview tip: know when to reach for Plotly over Matplotlib — mainly when the audience needs to explore the data themselves (dashboards), not just view a static image (reports)."
+},
+{
+  id: 72, section: 5, sectionTitle: "Plotly Basics", library: "plotly", difficulty: "Beginner",
+  title: "Interactive Bar Chart",
+  description: "Build an interactive bar chart comparing units sold per product.",
+  learningObjective: "Use px.bar() and customize bar color by category.",
+  expectedChartType: "Interactive Bar Chart",
+  dataset: { columns: ["Product", "UnitsSold"], rows: [["Widget A",320],["Widget B",210],["Widget C",450],["Widget D",180]] },
+  hints: [
+    "fig = px.bar(df, x='Product', y='UnitsSold', color='Product').",
+    "Add title='Units Sold by Product' as a kwarg.",
+    "Remember the variable must be named fig."
+  ],
+  starterCode: `import plotly.express as px
+
+# TODO: bar chart of UnitsSold by Product, stored in fig
+fig = None
+`,
+  solution: `import plotly.express as px
+
+fig = px.bar(df, x='Product', y='UnitsSold', color='Product', title='Units Sold by Product')
+`,
+  expectedOutput: { type: "bar", title: "Units Sold by Product", xlabel: "Product", ylabel: "UnitsSold", legend: true },
+  validationRules: ["title"],
+  explanation: "color='Product' tells Plotly to color each bar by its own category, which also auto-generates a legend. Common mistake: passing color a continuous numeric column when you wanted discrete category colors — Plotly will switch to a continuous color scale instead of distinct colors. Interview tip: in a real dashboard, color is one of your most valuable encoding channels — use it deliberately, not decoratively."
+},
+{
+  id: 75, section: 5, sectionTitle: "Plotly Basics", library: "plotly", difficulty: "Intermediate",
+  title: "Interactive Pie Chart",
+  description: "Show the share of transactions by payment method as an interactive pie chart.",
+  learningObjective: "Use px.pie() for an interactive, hoverable pie chart.",
+  expectedChartType: "Interactive Pie Chart",
+  dataset: { columns: ["PaymentMethod", "Share"], rows: [["UPI",48],["Card",27],["NetBanking",12],["COD",13]] },
+  hints: [
+    "fig = px.pie(df, names='PaymentMethod', values='Share').",
+    "Add title='Payment Method Share'.",
+    "Plotly pies are hoverable by default — no extra code needed for that."
+  ],
+  starterCode: `import plotly.express as px
+
+# TODO: pie chart of Share by PaymentMethod, stored in fig
+fig = None
+`,
+  solution: `import plotly.express as px
+
+fig = px.pie(df, names='PaymentMethod', values='Share', title='Payment Method Share')
+`,
+  expectedOutput: { type: "pie", title: "Payment Method Share", xlabel: "", ylabel: "", legend: true },
+  validationRules: ["title"],
+  explanation: "px.pie's names/values arguments map directly to wedge label / wedge size. Common mistake: mixing up names and values (swapping them produces a chart that runs but is semantically wrong). Interview tip: same caveat as the Matplotlib pie chart — justify the choice over a bar chart when asked."
+},
+
+// ---------------- SECTION 6: PLOTLY ADVANCED ----------------
+{
+  id: 81, section: 6, sectionTitle: "Plotly Advanced", library: "plotly", difficulty: "Advanced",
+  title: "Treemap",
+  description: "Visualize sales by category and subcategory as a treemap — box size encodes magnitude, nesting encodes hierarchy.",
+  learningObjective: "Use px.treemap() with a path= list to encode a hierarchy.",
+  expectedChartType: "Treemap",
+  dataset: { columns: ["Category", "Subcategory", "Sales"], rows: [["Electronics","Phones",50000],["Electronics","Laptops",70000],["Clothing","Men",30000],["Clothing","Women",42000],["Home","Furniture",25000],["Home","Decor",15000]] },
+  hints: [
+    "fig = px.treemap(df, path=['Category','Subcategory'], values='Sales').",
+    "path defines the nesting order, outer to inner.",
+    "Add title='Sales by Category and Subcategory'."
+  ],
+  starterCode: `import plotly.express as px
+
+# TODO: treemap of Sales nested by Category > Subcategory, stored in fig
+fig = None
+`,
+  solution: `import plotly.express as px
+
+fig = px.treemap(df, path=['Category', 'Subcategory'], values='Sales', title='Sales by Category and Subcategory')
+`,
+  expectedOutput: { type: "treemap", title: "Sales by Category and Subcategory", xlabel: "", ylabel: "", legend: false },
+  validationRules: ["title"],
+  explanation: "Treemaps pack rectangles proportionally to value, nested by hierarchy — excellent when you have 2+ levels of categories and want both 'which group is biggest' and 'which sub-item within it is biggest' in one view. Common mistake: using a treemap for time-based data (it has no inherent ordering, so trends get lost). Interview tip: contrast with a stacked bar chart — treemaps scale to far more categories before becoming unreadable."
+},
+{
+  id: 84, section: 6, sectionTitle: "Plotly Advanced", library: "plotly", difficulty: "Advanced",
+  title: "Waterfall Chart",
+  description: "Build a profit-bridge waterfall chart showing how starting revenue moves through costs to land at net profit.",
+  learningObjective: "Use plotly.graph_objects.Waterfall to show cumulative increases and decreases.",
+  expectedChartType: "Waterfall Chart",
+  dataset: { columns: ["Stage", "Value"], rows: [["Revenue",100000],["COGS",-40000],["Operating Exp",-25000],["Tax",-10000],["Net Profit",0]] },
+  hints: [
+    "import plotly.graph_objects as go",
+    "Use measure=['absolute','relative','relative','relative','total'] matching each row.",
+    "fig = go.Figure(go.Waterfall(x=df['Stage'], y=df['Value'], measure=[...])); remember to set fig.update_layout(title=...)."
+  ],
+  starterCode: `import plotly.graph_objects as go
+
+# TODO: build a Waterfall chart from Stage / Value, store the figure in fig
+fig = None
+`,
+  solution: `import plotly.graph_objects as go
+
+fig = go.Figure(go.Waterfall(
+    x=df['Stage'],
+    y=df['Value'],
+    measure=['absolute', 'relative', 'relative', 'relative', 'total']
+))
+fig.update_layout(title='Profit Bridge Waterfall')
+`,
+  expectedOutput: { type: "waterfall", title: "Profit Bridge Waterfall", xlabel: "", ylabel: "", legend: false },
+  validationRules: ["title"],
+  explanation: "The measure list tells Plotly whether each bar is a starting total, a relative add/subtract, or a final total — get this wrong and the bars float in the wrong place. Common mistake: forgetting the final 'total' measure, which means the chart never shows a grounded ending bar. Interview tip: waterfall charts are a favorite in finance/FP&A interviews for explaining a profit bridge — practice narrating one out loud."
+},
+{
+  id: 90, section: 6, sectionTitle: "Plotly Advanced", library: "plotly", difficulty: "Advanced",
+  title: "Candlestick Chart",
+  description: "Plot daily stock OHLC (open, high, low, close) data as a candlestick chart.",
+  learningObjective: "Use plotly.graph_objects.Candlestick for financial time-series data.",
+  expectedChartType: "Candlestick Chart",
+  dataset: { columns: ["Date", "Open", "High", "Low", "Close"], rows: [
+    ["2025-01-01",100,108,98,105],["2025-01-02",105,112,103,110],["2025-01-03",110,111,100,102],
+    ["2025-01-04",102,109,101,107],["2025-01-05",107,115,106,113]
+  ] },
+  hints: [
+    "import plotly.graph_objects as go",
+    "fig = go.Figure(go.Candlestick(x=df['Date'], open=df['Open'], high=df['High'], low=df['Low'], close=df['Close']))",
+    "Green candles close higher than they opened; red candles close lower."
+  ],
+  starterCode: `import plotly.graph_objects as go
+
+# TODO: build a Candlestick chart from Date/Open/High/Low/Close, store in fig
+fig = None
+`,
+  solution: `import plotly.graph_objects as go
+
+fig = go.Figure(go.Candlestick(
+    x=df['Date'], open=df['Open'], high=df['High'], low=df['Low'], close=df['Close']
+))
+fig.update_layout(title='Daily Stock Price')
+`,
+  expectedOutput: { type: "candlestick", title: "Daily Stock Price", xlabel: "", ylabel: "", legend: false },
+  validationRules: ["title"],
+  explanation: "Each candle encodes 4 numbers at once (open/high/low/close), which is why this chart type is the de facto standard in trading platforms instead of 4 separate line charts. Common mistake: swapping high and low, which silently produces nonsensical (inverted) candles. Interview tip: know the color convention — typically green/white = close > open (bullish), red/black = close < open (bearish)."
+},
+
+// ---------------- SECTION 7: FORMATTING CHALLENGES ----------------
+{
+  id: 97, section: 7, sectionTitle: "Formatting Challenges", library: "matplotlib", difficulty: "Intermediate",
+  title: "Currency Formatting",
+  description: "Plot monthly revenue and format the y-axis tick labels as currency (e.g. $40,000) instead of raw numbers.",
+  learningObjective: "Use matplotlib.ticker.FuncFormatter (or StrMethodFormatter) to format axis ticks as currency.",
+  expectedChartType: "Bar Chart (currency-formatted axis)",
+  dataset: { columns: ["Month", "Revenue"], rows: [["Jan",40000],["Feb",45000],["Mar",42000],["Apr",51000],["May",58000],["Jun",62000]] },
+  hints: [
+    "from matplotlib.ticker import FuncFormatter",
+    "Define a formatter: lambda x, pos: f'${x:,.0f}'",
+    "ax = plt.gca(); ax.yaxis.set_major_formatter(FuncFormatter(...))"
+  ],
+  starterCode: `import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
+
+# TODO: bar chart of Revenue by Month with the y-axis formatted as currency
+`,
+  solution: `import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
+
+plt.bar(df['Month'], df['Revenue'])
+plt.title('Monthly Revenue ($)')
+plt.xlabel('Month')
+plt.ylabel('Revenue')
+ax = plt.gca()
+ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: f'\${x:,.0f}'))
+`,
+  expectedOutput: { type: "bar", title: "Monthly Revenue ($)", xlabel: "Month", ylabel: "Revenue", legend: false },
+  validationRules: ["type", "title"],
+  explanation: "FuncFormatter lets you control exactly how every tick label is rendered, independent of the underlying data. Common mistake: converting the actual data values to formatted strings (e.g. df['Revenue'] = '$' + df['Revenue'].astype(str)) — that breaks the numeric axis entirely instead of just changing the label text. Interview tip: this distinction (formatting display vs. mutating data) is exactly the kind of thing a reporting-analyst interview will probe."
+},
+{
+  id: 102, section: 7, sectionTitle: "Formatting Challenges", library: "matplotlib", difficulty: "Intermediate",
+  title: "Date Formatting",
+  description: "Plot daily website visitors and format the x-axis to show clean, readable dates instead of raw date strings.",
+  learningObjective: "Convert a date column to datetime and format tick labels cleanly.",
+  expectedChartType: "Line Chart (formatted date axis)",
+  dataset: { columns: ["Date", "Visitors"], rows: [["2025-01-01",1200],["2025-01-02",1350],["2025-01-03",1100],["2025-01-04",1500],["2025-01-05",1700],["2025-01-06",1600],["2025-01-07",1800]] },
+  hints: [
+    "df['Date'] = pd.to_datetime(df['Date']) converts the column to real datetime objects.",
+    "plt.plot(df['Date'], df['Visitors']) then plt.gcf().autofmt_xdate() angles the labels so they don't overlap.",
+    "Title: 'Daily Website Visitors'."
+  ],
+  starterCode: `import matplotlib.pyplot as plt
+import pandas as pd
+
+# TODO: convert df['Date'] to datetime, plot Visitors over Date, and auto-format the date axis
+`,
+  solution: `import matplotlib.pyplot as plt
+import pandas as pd
+
+df['Date'] = pd.to_datetime(df['Date'])
+plt.plot(df['Date'], df['Visitors'])
+plt.title('Daily Website Visitors')
+plt.xlabel('Date')
+plt.ylabel('Visitors')
+plt.gcf().autofmt_xdate()
+`,
+  expectedOutput: { type: "line", title: "Daily Website Visitors", xlabel: "Date", ylabel: "Visitors", legend: false },
+  validationRules: ["type", "title", "xlabel", "ylabel"],
+  explanation: "Converting to pd.to_datetime first means Matplotlib understands the axis is time-based, which unlocks smart tick spacing and rotation. Common mistake: leaving dates as plain strings — Matplotlib then treats every unique string as an arbitrary category, which looks fine for a handful of points but breaks down (and mis-orders) at scale. Interview tip: this exact step is the first thing to check when someone says 'my date axis looks wrong'."
+},
+{
+  id: 104, section: 7, sectionTitle: "Formatting Challenges", library: "matplotlib", difficulty: "Advanced",
+  title: "Secondary Axis",
+  description: "Plot revenue (bars) and profit margin % (line) on the same chart using a secondary y-axis, since they're on very different scales.",
+  learningObjective: "Use ax.twinx() to create a second y-axis sharing the same x-axis.",
+  expectedChartType: "Combo Chart (dual axis)",
+  dataset: { columns: ["Month", "Revenue", "MarginPct"], rows: [["Jan",40000,12],["Feb",45000,14],["Mar",42000,11],["Apr",51000,16],["May",58000,18],["Jun",62000,20]] },
+  hints: [
+    "fig, ax1 = plt.subplots() then ax1.bar(df['Month'], df['Revenue']).",
+    "ax2 = ax1.twinx() creates a second y-axis sharing the same x-axis.",
+    "ax2.plot(df['Month'], df['MarginPct'], color='red') draws the margin line on the new axis."
+  ],
+  starterCode: `import matplotlib.pyplot as plt
+
+# TODO: bar chart of Revenue on the primary axis, line chart of MarginPct on a secondary axis
+`,
+  solution: `import matplotlib.pyplot as plt
+
+fig, ax1 = plt.subplots()
+ax1.bar(df['Month'], df['Revenue'], color='#4C72B0')
+ax1.set_xlabel('Month')
+ax1.set_ylabel('Revenue')
+
+ax2 = ax1.twinx()
+ax2.plot(df['Month'], df['MarginPct'], color='red', marker='o')
+ax2.set_ylabel('Margin %')
+
+plt.title('Revenue and Margin % by Month')
+`,
+  expectedOutput: { type: "bar", title: "Revenue and Margin % by Month", xlabel: "Month", ylabel: "Revenue", legend: false, minAxes: 2 },
+  validationRules: ["title", "minAxes"],
+  explanation: "twinx() is the standard pattern whenever two series share an x-axis but live on incompatible scales (e.g. revenue in tens of thousands vs. a percentage from 0-100). Common mistake: plotting both series on one axis anyway, which squashes the smaller-scale series into a flat line near zero. Interview tip: always label which axis is which explicitly (axis labels and/or differently colored ticks) — a dual-axis chart with no clear labeling is a common 'misleading chart' interview critique."
+},
+
+// ---------------- SECTION 8: REAL-WORLD PROJECTS ----------------
+{
+  id: 111, section: 8, sectionTitle: "Real-World Projects", library: "matplotlib", difficulty: "Advanced",
+  title: "Sales Dashboard (Actual vs Target)",
+  description: "Build a combo chart comparing actual sales (bars) against target sales (line) for each month — a staple of any sales performance review.",
+  learningObjective: "Combine plt.bar() and plt.plot() on the same axes to compare actual vs. target.",
+  expectedChartType: "Combo Chart",
+  dataset: { columns: ["Month", "ActualSales", "TargetSales"], rows: [["Jan",40000,45000],["Feb",47000,45000],["Mar",43000,46000],["Apr",52000,48000],["May",60000,55000],["Jun",58000,57000]] },
+  hints: [
+    "plt.bar(df['Month'], df['ActualSales'], label='Actual') for the bars.",
+    "plt.plot(df['Month'], df['TargetSales'], color='red', marker='o', label='Target') for the target line.",
+    "Don't forget plt.legend() so the viewer can tell actual from target."
+  ],
+  starterCode: `import matplotlib.pyplot as plt
+
+# TODO: bar chart of ActualSales + line overlay of TargetSales, with a legend
+`,
+  solution: `import matplotlib.pyplot as plt
+
+plt.bar(df['Month'], df['ActualSales'], label='Actual', color='#4C72B0')
+plt.plot(df['Month'], df['TargetSales'], color='red', marker='o', label='Target')
+plt.title('Actual vs Target Sales')
+plt.xlabel('Month')
+plt.ylabel('Sales')
+plt.legend()
+`,
+  expectedOutput: { type: "bar", title: "Actual vs Target Sales", xlabel: "Month", ylabel: "Sales", legend: true },
+  validationRules: ["title", "legend"],
+  explanation: "This combo pattern (bar for the actual result, line for the target/benchmark) is one of the most requested chart types in real reporting roles — it answers 'did we hit the goal' at a glance. Common mistake: using two different colors for actual bars that don't map to anything (e.g. red/green by month) instead of reserving color to distinguish actual vs. target. Interview tip: this is a great chart to bring up when asked for an example of a report you'd build for a CVM/performance review."
+},
+{
+  id: 116, section: 8, sectionTitle: "Real-World Projects", library: "plotly", difficulty: "Advanced",
+  title: "E-Commerce Order Status Dashboard",
+  description: "E-commerce sellers track orders across statuses like Shipped, Delivered, RTO (Return to Origin), Cancelled, Return and Exchange. Build an interactive bar chart of order count by status.",
+  learningObjective: "Use px.bar() with color-by-category to build a quick operational status dashboard.",
+  expectedChartType: "Interactive Bar Chart",
+  dataset: { columns: ["OrderStatus", "OrderCount"], rows: [["Delivered",1240],["Shipped",380],["RTO",210],["Cancelled",95],["Return",60],["Exchange",25]] },
+  hints: [
+    "fig = px.bar(df, x='OrderStatus', y='OrderCount', color='OrderStatus').",
+    "Sort statuses by count first with df.sort_values('OrderCount', ascending=False) for a cleaner read.",
+    "Title: 'Orders by Status'."
+  ],
+  starterCode: `import plotly.express as px
+
+# TODO: bar chart of OrderCount by OrderStatus, sorted descending, stored in fig
+fig = None
+`,
+  solution: `import plotly.express as px
+
+sorted_df = df.sort_values('OrderCount', ascending=False)
+fig = px.bar(sorted_df, x='OrderStatus', y='OrderCount', color='OrderStatus', title='Orders by Status')
+`,
+  expectedOutput: { type: "bar", title: "Orders by Status", xlabel: "OrderStatus", ylabel: "OrderCount", legend: true },
+  validationRules: ["title"],
+  explanation: "Sorting before plotting is what turns a flat bar chart into one that's instantly scannable for 'what's the biggest problem' — here, a high RTO count relative to Delivered is usually the first thing an ops review will flag. Common mistake: forgetting to sort, which leaves the eye doing the ranking work the chart should be doing. Interview tip: this exact chart shape (status breakdown, sorted, color-coded) is a strong example to bring into a Reporting Analyst interview when discussing dashboards you've built."
+},
+{
+  id: 120, section: 8, sectionTitle: "Real-World Projects", library: "matplotlib", difficulty: "Advanced",
+  title: "End-to-End Dashboard Challenge",
+  description: "Bring it all together: build a 2x2 grid of subplots — a bar chart of revenue by region, a line chart of monthly sales trend, a pie chart of market share, and a scatter plot of study hours vs exam score — all in a single figure.",
+  learningObjective: "Use plt.subplots(2, 2) to combine four different chart types into one dashboard-style figure.",
+  expectedChartType: "Multi-panel Dashboard",
+  dataset: { columns: ["Month", "Sales"], rows: [["Jan",12000],["Feb",18000],["Mar",15000],["Apr",25000],["May",30000],["Jun",22000]] },
+  hints: [
+    "fig, axes = plt.subplots(2, 2, figsize=(10, 8)) gives you a 2x2 grid of Axes.",
+    "Index each panel: axes[0,0].bar(...), axes[0,1].plot(...), axes[1,0].pie(...), axes[1,1].scatter(...).",
+    "Call plt.tight_layout() at the end so panels don't overlap, and fig.suptitle('Sales Overview Dashboard') for an overall title."
+  ],
+  starterCode: `import matplotlib.pyplot as plt
+
+# df only has Month/Sales here — feel free to reuse it across panels
+# TODO: build a 2x2 dashboard: bar, line, pie, scatter (any reasonable combination using df)
+`,
+  solution: `import matplotlib.pyplot as plt
+
+fig, axes = plt.subplots(2, 2, figsize=(10, 8))
+
+axes[0,0].bar(df['Month'], df['Sales'])
+axes[0,0].set_title('Sales by Month (Bar)')
+
+axes[0,1].plot(df['Month'], df['Sales'], marker='o')
+axes[0,1].set_title('Sales Trend (Line)')
+
+axes[1,0].pie(df['Sales'], labels=df['Month'], autopct='%1.0f%%')
+axes[1,0].set_title('Sales Share (Pie)')
+
+axes[1,1].scatter(range(len(df)), df['Sales'])
+axes[1,1].set_title('Sales (Scatter)')
+
+fig.suptitle('Sales Overview Dashboard')
+plt.tight_layout()
+`,
+  expectedOutput: { type: "other", title: "Sales Overview Dashboard", xlabel: "", ylabel: "", legend: false, minAxes: 4 },
+  validationRules: ["minAxes"],
+  explanation: "Multi-panel dashboards are how most real reporting decks are actually built — one suptitle, several focused panels, each answering one question. Common mistake: skipping plt.tight_layout(), which leaves titles and labels overlapping between panels. Interview tip: when asked to 'build a one-pager' for stakeholders, this subplot grid pattern is exactly the structure to describe."
+}
+];
+
+</script>
+<script>
+// ============================================================
+// APP ENGINE
+// ============================================================
+
+const CORE_PKGS = ['numpy', 'matplotlib', 'pandas'];
+const MICROPIP_PKGS = { seaborn: 'seaborn', plotly: 'plotly' };
+
+const ACHIEVEMENTS = [
+  { id: 'first_chart', name: 'First Chart', desc: 'Solve your first question', test: p => p.solvedIds.length >= 1 },
+  { id: 'ten_charts', name: '10 Charts Solved', desc: 'Solve 10 questions', test: p => p.solvedIds.length >= 10 },
+  { id: 'all_charts', name: 'Chart Grandmaster', desc: 'Solve every question on the platform', test: p => p.solvedIds.length >= QUESTIONS.length },
+  { id: 'matplotlib_master', name: 'Matplotlib Master', desc: 'Solve every Matplotlib question', test: p => libDone(p, 'matplotlib') },
+  { id: 'seaborn_master', name: 'Seaborn Master', desc: 'Solve every Seaborn question', test: p => libDone(p, 'seaborn') },
+  { id: 'plotly_master', name: 'Plotly Master', desc: 'Solve every Plotly question', test: p => libDone(p, 'plotly') },
+  { id: 'viz_expert', name: 'Visualization Expert', desc: 'Solve at least 1 question from every section', test: p => {
+      const sections = new Set(QUESTIONS.map(q => q.section));
+      const solvedSections = new Set(QUESTIONS.filter(q => p.solvedIds.includes(q.id)).map(q => q.section));
+      return [...sections].every(s => solvedSections.has(s));
+    } },
+];
+function libDone(progress, lib) {
+  const libQs = QUESTIONS.filter(q => q.library === lib);
+  return libQs.every(q => progress.solvedIds.includes(q.id));
+}
+
+// ---------------- STATE ----------------
+const STORAGE_KEY = 'pyviz_progress_v1';
+let progress = loadProgress();
+let currentIndex = 0;
+let filteredQuestions = QUESTIONS.slice();
+let monacoEditor = null;
+let pyodide = null;
+let pyodideReady = false;
+const loadedPkgs = new Set();
+let hintsRevealed = 0;
+let lastRunPassed = false;
+
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return { solvedIds: [], attempts: {}, bookmarks: [], notes: {}, achievements: [], theme: 'dark', recentlySolved: [] };
+}
+function saveProgress() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(progress)); } catch (e) {}
+}
+
+// ---------------- INIT ----------------
+window.addEventListener('DOMContentLoaded', () => {
+  applyTheme(progress.theme || 'dark');
+  renderQuestionList();
+  loadQuestion(0);
+  wireGlobalControls();
+  initMonaco();
+  initPyodide();
+  updateProgressBar();
+});
+
+// ---------------- THEME ----------------
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  progress.theme = theme;
+  saveProgress();
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = theme === 'dark' ? '☀️ Light' : '🌙 Dark';
+}
+function toggleTheme() {
+  applyTheme((progress.theme === 'dark') ? 'light' : 'dark');
+  if (monacoEditor) monaco.editor.setTheme(progress.theme === 'dark' ? 'vs-dark' : 'vs');
+}
+
+// ---------------- MONACO ----------------
+function initMonaco() {
+  require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
+  require(['vs/editor/editor.main'], function () {
+    monacoEditor = monaco.editor.create(document.getElementById('editor'), {
+      value: getCurrentQuestion().starterCode,
+      language: 'python',
+      theme: progress.theme === 'dark' ? 'vs-dark' : 'vs',
+      fontSize: 14,
+      automaticLayout: true,
+      minimap: { enabled: false },
+      tabSize: 4,
+      insertSpaces: true,
+      scrollBeyondLastLine: false,
+    });
+    monacoEditor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, () => runCode());
+    document.getElementById('editor-loading').style.display = 'none';
+  });
+}
+
+// ---------------- PYODIDE ----------------
+async function initPyodide() {
+  setRunnerStatus('loading', 'Booting Python runtime…');
+  try {
+    pyodide = await loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.27.2/full/' });
+    setRunnerStatus('loading', 'Loading numpy, pandas, matplotlib…');
+    await pyodide.loadPackage(CORE_PKGS);
+    CORE_PKGS.forEach(p => loadedPkgs.add(p));
+    await pyodide.runPythonAsync(`
+import matplotlib
+matplotlib.use('Agg')
+`);
+    pyodideReady = true;
+    setRunnerStatus('idle', 'Ready. Press Ctrl+Enter or click Run Code.');
+  } catch (e) {
+    console.error(e);
+    setRunnerStatus('error', 'Could not load the Python runtime in this preview. Try downloading the HTML file and opening it directly in your browser (see note below the editor).');
+  }
+}
+
+async function ensurePackages(libs) {
+  const need = libs.filter(l => l !== 'matplotlib' && !loadedPkgs.has(l));
+  if (!need.length) return;
+  setRunnerStatus('loading', 'Installing ' + need.join(', ') + '…');
+  await pyodide.loadPackage('micropip');
+  const micropip = pyodide.pyimport('micropip');
+  for (const lib of need) {
+    const pkgName = MICROPIP_PKGS[lib] || lib;
+    await micropip.install(pkgName);
+    loadedPkgs.add(lib);
+  }
+}
+
+// ---------------- QUESTION NAVIGATION ----------------
+function getCurrentQuestion() { return filteredQuestions[currentIndex]; }
+
+function loadQuestion(idx) {
+  currentIndex = idx;
+  hintsRevealed = 0;
+  lastRunPassed = progress.solvedIds.includes(getCurrentQuestion().id);
+  renderLeftPanel();
+  renderOutputIdle();
+  if (monacoEditor) monacoEditor.setValue(getCurrentQuestion().starterCode);
+  highlightActiveInList();
+}
+
+function nextQuestion() {
+  if (currentIndex < filteredQuestions.length - 1) loadQuestion(currentIndex + 1);
+}
+function jumpToQuestion(qid) {
+  const idx = filteredQuestions.findIndex(q => q.id === qid);
+  if (idx >= 0) loadQuestion(idx);
+}
+
+// ---------------- LEFT PANEL RENDER ----------------
+function renderLeftPanel() {
+  const q = getCurrentQuestion();
+  const solved = progress.solvedIds.includes(q.id);
+  const bookmarked = progress.bookmarks.includes(q.id);
+
+  document.getElementById('q-section').textContent = `Section ${q.section} · ${q.sectionTitle}`;
+  document.getElementById('q-number').textContent = `Q${q.id}`;
+  document.getElementById('q-difficulty').textContent = q.difficulty;
+  document.getElementById('q-difficulty').className = 'badge diff-' + q.difficulty.toLowerCase();
+  document.getElementById('q-library').textContent = q.library;
+  document.getElementById('q-library').className = 'badge lib-' + q.library;
+  document.getElementById('q-title').textContent = q.title;
+  document.getElementById('q-desc').textContent = q.description;
+  document.getElementById('q-objective').textContent = q.learningObjective;
+  document.getElementById('q-expected-type').textContent = q.expectedChartType;
+  document.getElementById('solved-badge').style.display = solved ? 'inline-flex' : 'none';
+  document.getElementById('bookmark-btn').textContent = bookmarked ? '★ Bookmarked' : '☆ Bookmark';
+  document.getElementById('bookmark-btn').classList.toggle('active', bookmarked);
+
+  // dataset table
+  const table = document.getElementById('dataset-table');
+  let html = '<thead><tr>' + q.dataset.columns.map(c => `<th>${escapeHtml(c)}</th>`).join('') + '</tr></thead><tbody>';
+  q.dataset.rows.slice(0, 8).forEach(row => {
+    html += '<tr>' + row.map(v => `<td>${escapeHtml(String(v))}</td>`).join('') + '</tr>';
+  });
+  html += '</tbody>';
+  table.innerHTML = html;
+  document.getElementById('dataset-note').textContent = q.dataset.rows.length > 8
+    ? `Showing 8 of ${q.dataset.rows.length} rows — full dataset is loaded into df.`
+    : `All ${q.dataset.rows.length} rows are loaded into df.`;
+
+  // hints
+  const hintsEl = document.getElementById('hints-list');
+  hintsEl.innerHTML = '';
+  q.hints.forEach((h, i) => {
+    const li = document.createElement('li');
+    li.className = 'hint-item';
+    li.id = 'hint-' + i;
+    li.innerHTML = i < hintsRevealed ? escapeHtml(h) : '<span class="hint-locked">Hint ' + (i + 1) + ' (click to reveal)</span>';
+    li.onclick = () => revealHint(i);
+    hintsEl.appendChild(li);
+  });
+
+  // notes
+  document.getElementById('notes-area').value = progress.notes[q.id] || '';
+
+  // next button state
+  const nextBtn = document.getElementById('next-btn');
+  nextBtn.disabled = !solved;
+  nextBtn.title = solved ? 'Go to the next question' : 'Solve this question to unlock Next';
+
+  document.getElementById('q-position').textContent = `${currentIndex + 1} / ${filteredQuestions.length}`;
+}
+
+function revealHint(i) {
+  if (i < hintsRevealed) return;
+  hintsRevealed = i + 1;
+  renderLeftPanel();
+}
+
+function toggleBookmark() {
+  const q = getCurrentQuestion();
+  const i = progress.bookmarks.indexOf(q.id);
+  if (i >= 0) progress.bookmarks.splice(i, 1); else progress.bookmarks.push(q.id);
+  saveProgress();
+  renderLeftPanel();
+}
+
+function saveNote() {
+  const q = getCurrentQuestion();
+  progress.notes[q.id] = document.getElementById('notes-area').value;
+  saveProgress();
+}
+
+// ---------------- EDITOR ACTIONS ----------------
+function resetCode() {
+  if (monacoEditor) monacoEditor.setValue(getCurrentQuestion().starterCode);
+}
+function showSolution() {
+  if (!confirm('This will replace your current code with the reference solution. Continue?')) return;
+  if (monacoEditor) monacoEditor.setValue(getCurrentQuestion().solution);
+}
+function toggleFullscreen() {
+  document.getElementById('center-panel').classList.toggle('fullscreen');
+  if (monacoEditor) setTimeout(() => monacoEditor.layout(), 50);
+}
+
+// ---------------- RUN + VALIDATE ----------------
+function setRunnerStatus(state, msg) {
+  const el = document.getElementById('runner-status');
+  el.className = 'runner-status status-' + state;
+  el.textContent = msg;
+}
+
+async function runCode() {
+  const q = getCurrentQuestion();
+  if (!pyodideReady) { setRunnerStatus('error', 'Python runtime is still loading — please wait.'); return; }
+
+  document.getElementById('run-btn').disabled = true;
+  renderOutputRunning();
+
+  const requiredLibs = q.library === 'seaborn' ? ['matplotlib', 'pandas', 'numpy', 'seaborn']
+                      : q.library === 'plotly' ? ['plotly']
+                      : ['matplotlib', 'pandas', 'numpy'];
+  try {
+    await ensurePackages(requiredLibs);
+  } catch (e) {
+    renderOutputError('Failed to install required packages: ' + e.message);
+    document.getElementById('run-btn').disabled = false;
+    setRunnerStatus('error', 'Package install failed.');
+    return;
+  }
+
+  setRunnerStatus('loading', 'Running your code…');
+
+  const userCode = monacoEditor.getValue();
+  let stdoutBuf = '', stderrBuf = '';
+  pyodide.setStdout({ batched: (s) => { stdoutBuf += s + '\n'; } });
+  pyodide.setStderr({ batched: (s) => { stderrBuf += s + '\n'; } });
+
+  pyodide.globals.set('_dataset_json', JSON.stringify(q.dataset));
+
+  const prelude = `
+import json, pandas as pd
+_d = json.loads(_dataset_json)
+df = pd.DataFrame(_d['rows'], columns=_d['columns'])
+`;
+  const mplReset = q.library !== 'plotly' ? `
+import matplotlib.pyplot as plt
+plt.close('all')
+` : '';
+
+  try {
+    await pyodide.runPythonAsync(prelude + mplReset);
+    await pyodide.runPythonAsync(userCode);
+  } catch (e) {
+    pyodide.setStdout({}); pyodide.setStderr({});
+    renderOutputError(formatPyError(e), stdoutBuf);
+    document.getElementById('run-btn').disabled = false;
+    setRunnerStatus('error', 'Your code raised an error.');
+    return;
+  }
+
+  let meta;
+  try {
+    if (q.library === 'plotly') {
+      meta = await extractPlotly();
+    } else {
+      meta = await extractMatplotlib();
+    }
+  } catch (e) {
+    pyodide.setStdout({}); pyodide.setStderr({});
+    renderOutputError('Could not read a chart from your code. Did you build a figure (e.g. with plt..., sns..., or fig = px...)?\n\n' + e.message, stdoutBuf);
+    document.getElementById('run-btn').disabled = false;
+    setRunnerStatus('error', 'No chart detected.');
+    return;
+  }
+  pyodide.setStdout({}); pyodide.setStderr({});
+
+  if (meta.error) {
+    renderOutputError('Could not read a chart from your code: ' + meta.error, stdoutBuf);
+    document.getElementById('run-btn').disabled = false;
+    setRunnerStatus('error', 'No chart detected.');
+    return;
+  }
+
+  const checks = validate(q, meta);
+  const passed = checks.every(c => c.pass);
+
+  renderOutputResult(q, meta, checks, passed, stdoutBuf);
+  document.getElementById('run-btn').disabled = false;
+
+  recordAttempt(q.id, passed);
+  if (passed) {
+    setRunnerStatus('success', 'Correct! Great work.');
+    markSolved(q.id);
+  } else {
+    setRunnerStatus('error', 'Not quite — check the validation checklist below.');
+  }
+  renderLeftPanel();
+}
+
+function formatPyError(e) {
+  const msg = (e && e.message) ? e.message : String(e);
+  // Trim pyodide's internal traceback noise down to the Python traceback portion when present
+  const idx = msg.indexOf('Traceback');
+  return idx >= 0 ? msg.slice(idx) : msg;
+}
+
+async function extractMatplotlib() {
+  const code = `
+import matplotlib.pyplot as plt, base64, io, json
+def __pv():
+    fig = plt.gcf()
+    axes = fig.get_axes()
+    if not axes:
+        return json.dumps({"error": "no chart was created (no matplotlib figure found)"})
+    ax = axes[0]
+    chart_type = "other"
+    wedge_like = any(p.__class__.__name__ == "Wedge" for p in ax.patches)
+    if wedge_like:
+        chart_type = "pie"
+    elif len(ax.lines) > 0 and len(ax.patches) == 0:
+        chart_type = "line"
+    elif len(ax.patches) > 0 and not wedge_like:
+        chart_type = "bar"
+    elif len(ax.collections) > 0:
+        chart_type = "scatter"
+    meta = {
+        "chart_type": chart_type,
+        "title": ax.get_title() or (fig._suptitle.get_text() if fig._suptitle else ""),
+        "xlabel": ax.get_xlabel(),
+        "ylabel": ax.get_ylabel(),
+        "has_legend": ax.get_legend() is not None,
+        "num_axes": len(axes),
+    }
+    buf = io.BytesIO()
+    fig.savefig(buf, format='png', dpi=110, bbox_inches='tight', facecolor='white')
+    buf.seek(0)
+    meta["image"] = base64.b64encode(buf.read()).decode('utf-8')
+    return json.dumps(meta)
+__pv()
+`;
+  const resultStr = await pyodide.runPythonAsync(code);
+  return JSON.parse(resultStr);
+}
+
+async function extractPlotly() {
+  const code = `
+import json
+def __pv():
+    try:
+        f = fig
+    except NameError:
+        return json.dumps({"error": "no variable named fig was found — store your chart in a variable called fig"})
+    if f is None:
+        return json.dumps({"error": "fig is None — assign your px./go. chart to fig"})
+    title_obj = f.layout.title
+    title_text = (title_obj.text or "") if title_obj is not None else ""
+    xaxis_title = ""
+    yaxis_title = ""
+    try:
+        if f.layout.xaxis and f.layout.xaxis.title:
+            xaxis_title = f.layout.xaxis.title.text or ""
+    except Exception:
+        pass
+    try:
+        if f.layout.yaxis and f.layout.yaxis.title:
+            yaxis_title = f.layout.yaxis.title.text or ""
+    except Exception:
+        pass
+    types = [t.type for t in f.data]
+    has_legend = bool(f.layout.showlegend) if f.layout.showlegend is not None else (len(f.data) > 1)
+    return json.dumps({
+        "title": title_text or "",
+        "xlabel": xaxis_title,
+        "ylabel": yaxis_title,
+        "chart_type": types[0] if types else "other",
+        "has_legend": has_legend,
+        "num_axes": 1,
+        "fig_json": f.to_json()
+    })
+__pv()
+`;
+  const resultStr = await pyodide.runPythonAsync(code);
+  return JSON.parse(resultStr);
+}
+
+// ---------------- VALIDATION ----------------
+function strMatch(actual, expected) {
+  if (!expected) return true;
+  return (actual || '').trim().toLowerCase().includes(expected.trim().toLowerCase());
+}
+function validate(q, meta) {
+  const checks = [];
+  const exp = q.expectedOutput;
+  const want = (key) => (q.validationRules || []).includes(key);
+
+  if (want('type')) {
+    checks.push({ label: `Chart type looks like "${exp.type}"`, pass: !exp.type || exp.type === 'other' || meta.chart_type === exp.type });
+  }
+  if (want('title')) {
+    checks.push({ label: `Title contains "${exp.title}"`, pass: strMatch(meta.title, exp.title) });
+  }
+  if (want('xlabel')) {
+    checks.push({ label: `X-axis label set to "${exp.xlabel}"`, pass: strMatch(meta.xlabel, exp.xlabel) });
+  }
+  if (want('ylabel')) {
+    checks.push({ label: `Y-axis label set to "${exp.ylabel}"`, pass: strMatch(meta.ylabel, exp.ylabel) });
+  }
+  if (want('legend')) {
+    checks.push({ label: exp.legend ? 'Legend is shown' : 'Legend present', pass: meta.has_legend === true });
+  }
+  if (want('minAxes')) {
+    checks.push({ label: `At least ${exp.minAxes} subplot panel(s) detected`, pass: (meta.num_axes || 1) >= exp.minAxes });
+  }
+  if (checks.length === 0) {
+    checks.push({ label: 'A chart was generated', pass: true });
+  }
+  return checks;
+}
+
+// ---------------- PROGRESS / ACHIEVEMENTS ----------------
+function recordAttempt(qid, passed) {
+  if (!progress.attempts[qid]) progress.attempts[qid] = { tries: 0, correct: 0 };
+  progress.attempts[qid].tries += 1;
+  if (passed) progress.attempts[qid].correct += 1;
+  saveProgress();
+}
+
+function markSolved(qid) {
+  if (!progress.solvedIds.includes(qid)) {
+    progress.solvedIds.push(qid);
+    progress.recentlySolved = [qid, ...(progress.recentlySolved || [])].slice(0, 10);
+    saveProgress();
+    checkAchievements();
+    updateProgressBar();
+    renderQuestionList();
+  }
+}
+
+function checkAchievements() {
+  ACHIEVEMENTS.forEach(a => {
+    if (!progress.achievements.includes(a.id) && a.test(progress)) {
+      progress.achievements.push(a.id);
+      saveProgress();
+      showAchievementToast(a);
+    }
+  });
+}
+
+function showAchievementToast(a) {
+  const toast = document.createElement('div');
+  toast.className = 'achievement-toast';
+  toast.innerHTML = `<div class="ach-icon">🏆</div><div><div class="ach-name">Achievement unlocked: ${escapeHtml(a.name)}</div><div class="ach-desc">${escapeHtml(a.desc)}</div></div>`;
+  document.getElementById('toast-container').appendChild(toast);
+  setTimeout(() => toast.classList.add('show'), 10);
+  setTimeout(() => { toast.classList.remove('show'); setTimeout(() => toast.remove(), 400); }, 3800);
+}
+
+function updateProgressBar() {
+  const total = QUESTIONS.length;
+  const solved = progress.solvedIds.length;
+  const pct = total ? Math.round((solved / total) * 100) : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = `${solved} / ${total} solved (${pct}%)`;
+
+  let totalTries = 0, totalCorrect = 0;
+  Object.values(progress.attempts).forEach(a => { totalTries += a.tries; totalCorrect += a.correct; });
+  const accuracy = totalTries ? Math.round((totalCorrect / totalTries) * 100) : 0;
+  document.getElementById('accuracy-label').textContent = `Accuracy: ${accuracy}%`;
+}
+
+// ---------------- OUTPUT PANEL RENDER ----------------
+function renderOutputIdle() {
+  document.getElementById('output-status').textContent = 'Idle';
+  document.getElementById('output-status').className = 'status-pill status-idle';
+  document.getElementById('chart-area').innerHTML = '<div class="output-placeholder">Run your code to see the chart here.</div>';
+  document.getElementById('console-area').textContent = '';
+  document.getElementById('checklist').innerHTML = '';
+  document.getElementById('result-banner').style.display = 'none';
+}
+function renderOutputRunning() {
+  document.getElementById('output-status').textContent = 'Running…';
+  document.getElementById('output-status').className = 'status-pill status-running';
+  document.getElementById('chart-area').innerHTML = '<div class="output-placeholder">Executing…</div>';
+  document.getElementById('result-banner').style.display = 'none';
+}
+function renderOutputError(message, stdout) {
+  document.getElementById('output-status').textContent = 'Error';
+  document.getElementById('output-status').className = 'status-pill status-fail';
+  document.getElementById('chart-area').innerHTML = '<div class="output-placeholder error-placeholder">No chart produced</div>';
+  document.getElementById('console-area').textContent = (stdout || '') + '\n' + message;
+  document.getElementById('checklist').innerHTML = '';
+  document.getElementById('result-banner').className = 'result-banner fail';
+  document.getElementById('result-banner').textContent = 'Incorrect Answer. Try Again.';
+  document.getElementById('result-banner').style.display = 'block';
+}
+function renderOutputResult(q, meta, checks, passed, stdout) {
+  document.getElementById('output-status').textContent = passed ? 'Success' : 'Needs work';
+  document.getElementById('output-status').className = 'status-pill ' + (passed ? 'status-pass' : 'status-fail');
+
+  const chartArea = document.getElementById('chart-area');
+  if (q.library === 'plotly' && meta.fig_json) {
+    chartArea.innerHTML = '<div id="plotly-target" style="width:100%;height:100%;"></div>';
+    try {
+      const parsed = JSON.parse(meta.fig_json);
+      const layout = Object.assign({}, parsed.layout, {
+        paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+        font: { color: getComputedStyle(document.documentElement).getPropertyValue('--text-primary') },
+        margin: { t: 40, l: 40, r: 20, b: 40 }
+      });
+      Plotly.newPlot('plotly-target', parsed.data, layout, { responsive: true, displaylogo: false });
+    } catch (e) {
+      chartArea.innerHTML = '<div class="output-placeholder error-placeholder">Could not render interactive chart.</div>';
+    }
+  } else if (meta.image) {
+    chartArea.innerHTML = `<img class="chart-image" src="data:image/png;base64,${meta.image}" alt="Generated chart" />`;
+  } else {
+    chartArea.innerHTML = '<div class="output-placeholder">No chart image available.</div>';
+  }
+
+  document.getElementById('console-area').textContent = stdout || '';
+
+  const checklist = document.getElementById('checklist');
+  checklist.innerHTML = '<div class="checklist-title">Validation Checklist</div>' + checks.map(c =>
+    `<div class="check-item ${c.pass ? 'pass' : 'fail'}"><span class="check-icon">${c.pass ? '✓' : '✗'}</span>${escapeHtml(c.label)}</div>`
+  ).join('');
+
+  const banner = document.getElementById('result-banner');
+  banner.className = 'result-banner ' + (passed ? 'pass' : 'fail');
+  banner.textContent = passed ? 'Correct Answer!' : 'Incorrect Answer. Try Again.';
+  banner.style.display = 'block';
+}
+
+// ---------------- QUESTION LIST / SEARCH / FILTER ----------------
+function renderQuestionList() {
+  const container = document.getElementById('question-list');
+  container.innerHTML = '';
+  filteredQuestions.forEach((q) => {
+    const solved = progress.solvedIds.includes(q.id);
+    const bookmarked = progress.bookmarks.includes(q.id);
+    const item = document.createElement('div');
+    item.className = 'q-list-item' + (solved ? ' solved' : '');
+    item.dataset.qid = q.id;
+    item.innerHTML = `
+      <span class="q-list-status">${solved ? '✓' : '○'}</span>
+      <span class="q-list-id">Q${q.id}</span>
+      <span class="q-list-title">${escapeHtml(q.title)}</span>
+      <span class="q-list-lib lib-${q.library}">${q.library}</span>
+      ${bookmarked ? '<span class="q-list-bookmark">★</span>' : ''}
+    `;
+    item.onclick = () => { jumpToQuestion(q.id); closeBrowsePanel(); };
+    container.appendChild(item);
+  });
+  highlightActiveInList();
+}
+function highlightActiveInList() {
+  const q = getCurrentQuestion();
+  document.querySelectorAll('.q-list-item').forEach(el => {
+    el.classList.toggle('active', Number(el.dataset.qid) === q.id);
+  });
+}
+
+function applyFilters() {
+  const search = document.getElementById('search-input').value.trim().toLowerCase();
+  const lib = document.getElementById('filter-library').value;
+  const diff = document.getElementById('filter-difficulty').value;
+  const onlyBookmarked = document.getElementById('filter-bookmarked').checked;
+
+  filteredQuestions = QUESTIONS.filter(q => {
+    if (lib !== 'all' && q.library !== lib) return false;
+    if (diff !== 'all' && q.difficulty !== diff) return false;
+    if (onlyBookmarked && !progress.bookmarks.includes(q.id)) return false;
+    if (search && !(q.title.toLowerCase().includes(search) || q.description.toLowerCase().includes(search) || String(q.id).includes(search))) return false;
+    return true;
+  });
+  if (!filteredQuestions.length) filteredQuestions = QUESTIONS.slice();
+  renderQuestionList();
+  loadQuestion(0);
+}
+
+function openBrowsePanel() { document.getElementById('browse-overlay').classList.add('open'); }
+function closeBrowsePanel() { document.getElementById('browse-overlay').classList.remove('open'); }
+
+function randomChallenge() {
+  const idx = Math.floor(Math.random() * filteredQuestions.length);
+  loadQuestion(idx);
+  closeBrowsePanel();
+}
+
+// ---------------- WIRING ----------------
+function wireGlobalControls() {
+  document.getElementById('run-btn').onclick = runCode;
+  document.getElementById('reset-btn').onclick = resetCode;
+  document.getElementById('solution-btn').onclick = showSolution;
+  document.getElementById('fullscreen-btn').onclick = toggleFullscreen;
+  document.getElementById('next-btn').onclick = nextQuestion;
+  document.getElementById('theme-toggle').onclick = toggleTheme;
+  document.getElementById('bookmark-btn').onclick = toggleBookmark;
+  document.getElementById('notes-area').onblur = saveNote;
+  document.getElementById('browse-btn').onclick = openBrowsePanel;
+  document.getElementById('browse-close').onclick = closeBrowsePanel;
+  document.getElementById('random-btn').onclick = randomChallenge;
+  document.getElementById('search-input').oninput = applyFilters;
+  document.getElementById('filter-library').onchange = applyFilters;
+  document.getElementById('filter-difficulty').onchange = applyFilters;
+  document.getElementById('filter-bookmarked').onchange = applyFilters;
+  document.getElementById('achievements-btn').onclick = showAchievementsPanel;
+  document.getElementById('achievements-close').onclick = () => document.getElementById('achievements-overlay').classList.remove('open');
+  document.getElementById('export-code-btn').onclick = exportCode;
+}
+
+function showAchievementsPanel() {
+  const list = document.getElementById('achievements-list');
+  list.innerHTML = ACHIEVEMENTS.map(a => {
+    const unlocked = progress.achievements.includes(a.id);
+    return `<div class="ach-row ${unlocked ? 'unlocked' : ''}">
+      <span class="ach-row-icon">${unlocked ? '🏆' : '🔒'}</span>
+      <div><div class="ach-row-name">${escapeHtml(a.name)}</div><div class="ach-row-desc">${escapeHtml(a.desc)}</div></div>
+    </div>`;
+  }).join('');
+  document.getElementById('achievements-overlay').classList.add('open');
+}
+
+function exportCode() {
+  const q = getCurrentQuestion();
+  const blob = new Blob([monacoEditor.getValue()], { type: 'text/x-python' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `q${q.id}_${q.title.replace(/\s+/g, '_').toLowerCase()}.py`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+}
+
+</script>
+</body>
+</html>
